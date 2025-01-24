@@ -3,13 +3,20 @@ import * as handpose from "@tensorflow-models/handpose";
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-backend-webgl";
 
+enum Status {
+  FAR = "FAR",
+  NEAR = "NEAR",
+  HIT = "HIT",
+}
 const HandTrackingApp = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const oppaiAudioRef = useRef<HTMLAudioElement>(null);
   const [randomPoint, setRandomPoint] = useState<{
     x: number;
     y: number;
   } | null>(null);
-  const [status, setStatus] = useState<string>("");
+  const [status, setStatus] = useState<Status>(Status.FAR);
 
   useEffect(() => {
     const setupCamera = async () => {
@@ -89,8 +96,8 @@ const HandTrackingApp = () => {
           y: (y / videoHeight) * window.innerHeight,
         }));
 
-        // 四角い当たり範囲（近い判定用）
-        const hitboxSize = 100; // 当たり範囲のサイズ
+        // おっぱいの位置
+        const hitboxSize = 100;
         const hitbox = {
           xMin: randomPoint.x - hitboxSize / 2,
           xMax: randomPoint.x + hitboxSize / 2,
@@ -113,13 +120,18 @@ const HandTrackingApp = () => {
           Math.abs(scaledX - randomPoint.x) < 50 &&
           Math.abs(scaledY - randomPoint.y) < 50;
 
-        // 状態を更新
         if (isHit) {
-          setStatus("当たり！");
+          setStatus(Status.HIT);
+          if (oppaiAudioRef.current) {
+            oppaiAudioRef.current.play();
+          }
         } else if (isNear) {
-          setStatus("近い！");
+          if (audioRef.current) {
+            audioRef.current.play();
+          }
+          setStatus(Status.NEAR);
         } else {
-          setStatus("");
+          setStatus(Status.FAR);
         }
       }
       requestAnimationFrame(detect);
@@ -166,19 +178,38 @@ const HandTrackingApp = () => {
           }}
         ></div>
       )}
-      {/* 状態メッセージ */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          color: "red",
-          fontSize: "24px",
-          zIndex: 4,
-        }}
-      >
-        {status}
-      </div>
+      <audio ref={audioRef} src="/oppai.mp3" preload="auto" />
+      <audio ref={oppaiAudioRef} src="/oppaioppai.mp3" preload="auto" />
+      {status === Status.NEAR && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(206, 60, 66, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "4rem",
+            color: "white",
+            fontWeight: "bold",
+            zIndex: 5,
+            animation: "flash 1s infinite",
+          }}
+        ></div>
+      )}
+      <style>{`
+        @keyframes flash {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
     </div>
   );
 };
