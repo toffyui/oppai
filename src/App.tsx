@@ -31,9 +31,10 @@ const HandTrackingApp = () => {
     setupCamera();
 
     // ランダムポイントを更新
+    const margin = 100; // 端からのマージン（px）
     setRandomPoint({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
+      x: margin + Math.random() * (window.innerWidth - 2 * margin),
+      y: margin + Math.random() * (window.innerHeight - 2 * margin),
     });
   }, []);
 
@@ -60,36 +61,72 @@ const HandTrackingApp = () => {
       const predictions = await model.estimateHands(video);
       if (predictions.length > 0 && randomPoint) {
         const landmarks = predictions[0].landmarks;
-        const [x, y] = landmarks[9]; // 中指の根元（ランドマーク9）
 
-        const scaledX =
-          window.innerWidth - (x / videoWidth) * window.innerWidth;
-        const scaledY = (y / videoHeight) * window.innerHeight;
-
-        // ランダムポイントとの距離計算
-        const distance = Math.sqrt(
-          Math.pow(scaledX - randomPoint.x, 2) +
-            Math.pow(scaledY - randomPoint.y, 2)
+        // 手のひら中心の計算
+        const palmLandmarksIndices = [0, 1, 5, 9, 13, 17];
+        const palmLandmarks = palmLandmarksIndices.map(
+          (index) => landmarks[index]
         );
+        const palmCenter = palmLandmarks.reduce(
+          (acc, [x, y]) => {
+            acc.x += x;
+            acc.y += y;
+            return acc;
+          },
+          { x: 0, y: 0 }
+        );
+        palmCenter.x /= palmLandmarks.length;
+        palmCenter.y /= palmLandmarks.length;
 
-        if (distance < 100) {
+        // スケーリングと鏡像補正
+        const scaledX =
+          window.innerWidth - (palmCenter.x / videoWidth) * window.innerWidth;
+        const scaledY = (palmCenter.y / videoHeight) * window.innerHeight;
+
+        // 手のランドマークをスケーリング
+        const scaledLandmarks = landmarks.map(([x, y]) => ({
+          x: window.innerWidth - (x / videoWidth) * window.innerWidth,
+          y: (y / videoHeight) * window.innerHeight,
+        }));
+
+        // 四角い当たり範囲（近い判定用）
+        const hitboxSize = 100; // 当たり範囲のサイズ
+        const hitbox = {
+          xMin: randomPoint.x - hitboxSize / 2,
+          xMax: randomPoint.x + hitboxSize / 2,
+          yMin: randomPoint.y - hitboxSize / 2,
+          yMax: randomPoint.y + hitboxSize / 2,
+        };
+
+        // 手が範囲内に触れているか判定
+        const isNear = scaledLandmarks.some(({ x, y }) => {
+          return (
+            x >= hitbox.xMin &&
+            x <= hitbox.xMax &&
+            y >= hitbox.yMin &&
+            y <= hitbox.yMax
+          );
+        });
+
+        // 当たり判定（手の中心が当たり範囲の中心）
+        const isHit =
+          Math.abs(scaledX - randomPoint.x) < 50 &&
+          Math.abs(scaledY - randomPoint.y) < 50;
+
+        // 状態を更新
+        if (isHit) {
           setStatus("当たり！");
-        } else if (distance < 300) {
+        } else if (isNear) {
           setStatus("近い！");
         } else {
           setStatus("");
         }
       }
-
       requestAnimationFrame(detect);
     };
 
     detect();
   };
-
-  useEffect(() => {
-    console.log(status);
-  }, [status]);
 
   return (
     <div
