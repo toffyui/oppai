@@ -161,61 +161,12 @@ export const Oppai: React.FC<Props> = ({
   }, [randomPoint, isVideoReady]);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        width: "100vw",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
+    <div className="Oppai-container">
       {!isVideoReady && <Loading />}
       {/* カメラ画像を背景として表示 */}
-      <video
-        ref={videoRef}
-        style={{
-          position: "absolute",
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          transform: "scaleX(-1)",
-          zIndex: 1,
-        }}
-        autoPlay
-        playsInline
-        muted
-      />
+      <video ref={videoRef} autoPlay playsInline muted />
       <audio ref={audioRef} src="/oppai.mp3" preload="auto" />
-      {status === Status.NEAR && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(206, 60, 66, 0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "4rem",
-            color: "white",
-            fontWeight: "bold",
-            zIndex: 5,
-            animation: "flash 1s infinite",
-          }}
-        ></div>
-      )}
-      <style>{`
-        @keyframes flash {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-      `}</style>
+      {status === Status.NEAR && <div className="near"></div>}
     </div>
   );
 };
