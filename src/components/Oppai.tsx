@@ -11,11 +11,15 @@ enum Status {
 type Props = {
   loadedModel: handpose.HandPose;
   setTimer: React.Dispatch<React.SetStateAction<number>>;
+  onOppaiFound: () => void;
 };
-export const Oppai: React.FC<Props> = ({ loadedModel, setTimer }) => {
+export const Oppai: React.FC<Props> = ({
+  loadedModel,
+  setTimer,
+  onOppaiFound,
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const oppaiAudioRef = useRef<HTMLAudioElement>(null);
   const [randomPoint, setRandomPoint] = useState<{
     x: number;
     y: number;
@@ -126,9 +130,7 @@ export const Oppai: React.FC<Props> = ({ loadedModel, setTimer }) => {
           if (isHit) {
             setStatus(Status.HIT);
             clearInterval(timerIntervalId);
-            if (oppaiAudioRef.current) {
-              oppaiAudioRef.current.play();
-            }
+            onOppaiFound();
           } else if (isNear) {
             if (audioRef.current) {
               audioRef.current.play();
@@ -184,7 +186,6 @@ export const Oppai: React.FC<Props> = ({ loadedModel, setTimer }) => {
         muted
       />
       <audio ref={audioRef} src="/oppai.mp3" preload="auto" />
-      <audio ref={oppaiAudioRef} src="/oppaioppai.mp3" preload="auto" />
       {status === Status.NEAR && (
         <div
           style={{
