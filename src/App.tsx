@@ -5,6 +5,7 @@ import "@tensorflow/tfjs-backend-webgl";
 import { Top } from "./components/Top";
 import * as handpose from "@tensorflow-models/handpose";
 import * as tf from "@tensorflow/tfjs";
+import { Result } from "./components/Result";
 
 enum Page {
   HOME = "home",
@@ -28,7 +29,19 @@ function App() {
     <>
       {page === Page.HOME && <Top onClick={() => setPage(Page.OPPAI)} />}
       {page === Page.OPPAI && model && (
-        <Oppai loadedModel={model} setTimer={setTimer} />
+        <Oppai
+          loadedModel={model}
+          setTimer={setTimer}
+          onOppaiFound={() => setPage(Page.RESULT)}
+        />
+      )}
+      {page === Page.RESULT && (
+        <Result
+          timer={timer}
+          onRetry={() => {
+            setPage(Page.HOME);
+          }}
+        />
       )}
     </>
   );

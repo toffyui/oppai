@@ -76,3 +76,19 @@
     transform: rotate(360deg);
   }
 }
+
+.Result-container {
+  box-sizing: border-box;
+  width: 600px;
+  max-width: calc(100% - 20px);
+  padding: 32px;
+  border-radius: 20px;
+  background-color: #fff;
+  -webkit-box-shadow: 0 5px 0 #57a3b8;
+  box-shadow: 0 5px 0 #57a3b8;
+  border: 2px solid #122327;
+}
+
+.Result-container > .App-header {
+  margin-top: -68px;
+}
