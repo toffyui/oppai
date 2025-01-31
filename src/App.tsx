@@ -24,7 +24,7 @@ function App() {
         <Result
           timer={timer}
           onRetry={() => {
-            setPage(Page.HOME);
+            window.location.reload();
           }}
         />
       )}

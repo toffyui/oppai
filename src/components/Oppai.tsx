@@ -3,6 +3,7 @@ import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
 import * as tf from "@tensorflow/tfjs-core";
 import "@tensorflow/tfjs-backend-webgl";
 import "@tensorflow/tfjs-converter";
+import "@mediapipe/hands";
 import { Loading } from "./Loading";
 
 enum Status {
