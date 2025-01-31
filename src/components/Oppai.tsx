@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as handpose from "@tensorflow-models/handpose";
-import * as tf from "@tensorflow/tfjs";
+import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
+import * as tf from "@tensorflow/tfjs-core";
+import "@tensorflow/tfjs-backend-webgl";
+import "@tensorflow/tfjs-converter";
 import { Loading } from "./Loading";
 
 enum Status {
@@ -8,16 +10,13 @@ enum Status {
   NEAR = "NEAR",
   HIT = "HIT",
 }
+
 type Props = {
-  loadedModel: handpose.HandPose;
   setTimer: React.Dispatch<React.SetStateAction<number>>;
   onOppaiFound: () => void;
 };
-export const Oppai: React.FC<Props> = ({
-  loadedModel,
-  setTimer,
-  onOppaiFound,
-}) => {
+
+export const Oppai: React.FC<Props> = ({ setTimer, onOppaiFound }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [randomPoint, setRandomPoint] = useState<{
@@ -54,7 +53,6 @@ export const Oppai: React.FC<Props> = ({
 
     setupCamera();
 
-    // ランダムポイントを更新
     const margin = 100; // 端からのマージン（px）
     setRandomPoint({
       x: margin + Math.random() * (window.innerWidth - 2 * margin),
@@ -64,7 +62,7 @@ export const Oppai: React.FC<Props> = ({
 
   useEffect(() => {
     if (!randomPoint || !isVideoReady) return;
-    const detectHands = async (model: handpose.HandPose) => {
+    const detectHands = async (model: handPoseDetection.HandDetector) => {
       if (!videoRef.current) return;
 
       const video = videoRef.current;
@@ -72,60 +70,72 @@ export const Oppai: React.FC<Props> = ({
       const videoHeight = video.videoHeight;
 
       const detect = async () => {
-        const predictions = await model.estimateHands(video);
-        if (predictions.length > 0 && randomPoint) {
-          const landmarks = predictions[0].landmarks;
+        const hands = await model.estimateHands(video);
+        if (hands.length > 0 && randomPoint) {
+          let isNear = false;
+          let isHit = false;
 
-          // 手のひら中心の計算
-          const palmLandmarksIndices = [0, 1, 5, 9, 13, 17];
-          const palmLandmarks = palmLandmarksIndices.map(
-            (index) => landmarks[index]
-          );
-          const palmCenter = palmLandmarks.reduce(
-            (acc, [x, y]) => {
-              acc.x += x;
-              acc.y += y;
-              return acc;
-            },
-            { x: 0, y: 0 }
-          );
-          palmCenter.x /= palmLandmarks.length;
-          palmCenter.y /= palmLandmarks.length;
+          hands.forEach((hand) => {
+            const landmarks = hand.keypoints; // 両手の `keypoints` を処理
 
-          // スケーリングと鏡像補正
-          const scaledX =
-            window.innerWidth - (palmCenter.x / videoWidth) * window.innerWidth;
-          const scaledY = (palmCenter.y / videoHeight) * window.innerHeight;
-
-          // 手のランドマークをスケーリング
-          const scaledLandmarks = landmarks.map(([x, y]) => ({
-            x: window.innerWidth - (x / videoWidth) * window.innerWidth,
-            y: (y / videoHeight) * window.innerHeight,
-          }));
-
-          // おっぱいの位置
-          const hitboxSize = 100;
-          const hitbox = {
-            xMin: randomPoint.x - hitboxSize / 2,
-            xMax: randomPoint.x + hitboxSize / 2,
-            yMin: randomPoint.y - hitboxSize / 2,
-            yMax: randomPoint.y + hitboxSize / 2,
-          };
-
-          // 手が範囲内に触れているか判定
-          const isNear = scaledLandmarks.some(({ x, y }) => {
-            return (
-              x >= hitbox.xMin &&
-              x <= hitbox.xMax &&
-              y >= hitbox.yMin &&
-              y <= hitbox.yMax
+            // 手のひら中心の計算
+            const palmLandmarksIndices = [0, 1, 5, 9, 13, 17];
+            const palmLandmarks = palmLandmarksIndices.map(
+              (index) => landmarks[index]
             );
-          });
+            const palmCenter = palmLandmarks.reduce(
+              (acc, { x, y }) => {
+                acc.x += x;
+                acc.y += y;
+                return acc;
+              },
+              { x: 0, y: 0 }
+            );
+            palmCenter.x /= palmLandmarks.length;
+            palmCenter.y /= palmLandmarks.length;
 
-          // 当たり判定（手の中心が当たり範囲の中心）
-          const isHit =
-            Math.abs(scaledX - randomPoint.x) < 50 &&
-            Math.abs(scaledY - randomPoint.y) < 50;
+            // スケーリングと鏡像補正
+            const scaledX =
+              window.innerWidth -
+              (palmCenter.x / videoWidth) * window.innerWidth;
+            const scaledY = (palmCenter.y / videoHeight) * window.innerHeight;
+
+            // 手のランドマークをスケーリング
+            const scaledLandmarks = landmarks.map(({ x, y }) => ({
+              x: window.innerWidth - (x / videoWidth) * window.innerWidth,
+              y: (y / videoHeight) * window.innerHeight,
+            }));
+
+            // おっぱいの位置
+            const hitboxSize = 100;
+            const hitbox = {
+              xMin: randomPoint.x - hitboxSize / 2,
+              xMax: randomPoint.x + hitboxSize / 2,
+              yMin: randomPoint.y - hitboxSize / 2,
+              yMax: randomPoint.y + hitboxSize / 2,
+            };
+
+            // どちらかの手が範囲内に触れているか判定
+            if (
+              scaledLandmarks.some(
+                ({ x, y }) =>
+                  x >= hitbox.xMin &&
+                  x <= hitbox.xMax &&
+                  y >= hitbox.yMin &&
+                  y <= hitbox.yMax
+              )
+            ) {
+              isNear = true;
+            }
+
+            // どちらかの手の中心が当たり判定の中心にあるか
+            if (
+              Math.abs(scaledX - randomPoint.x) < 50 &&
+              Math.abs(scaledY - randomPoint.y) < 50
+            ) {
+              isHit = true;
+            }
+          });
 
           if (isHit) {
             setStatus(Status.HIT);
@@ -145,19 +155,18 @@ export const Oppai: React.FC<Props> = ({
 
       detect();
     };
-    const loadHandposeModel = async () => {
-      if (loadedModel) {
-        detectHands(loadedModel);
-      } else {
-        await tf.setBackend("webgl");
-        await tf.ready();
 
-        const model = await handpose.load();
-        detectHands(model);
-      }
+    const loadHandposeModel = async () => {
+      await tf.setBackend("webgl");
+      await tf.ready();
+
+      const model = await handPoseDetection.createDetector(
+        handPoseDetection.SupportedModels.MediaPipeHands,
+        { runtime: "tfjs", modelType: "full" }
+      );
+      detectHands(model);
     };
     loadHandposeModel();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [randomPoint, isVideoReady]);
 
   return (
